@@ -31,7 +31,7 @@ jobs:
         # engines floor in the same change, never separately.
         node: ['20', '22', '24']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -53,7 +53,7 @@ jobs:
     name: module invariants
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -78,7 +78,7 @@ jobs:
     name: repo hygiene
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # reporting/ and .vault/ are a SECURITY boundary, not noise reduction. A
       # run folder holds an authenticated session's traffic; a vault file is
@@ -116,7 +116,7 @@ jobs:
     name: dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
