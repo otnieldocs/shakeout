@@ -1,5 +1,7 @@
 # Shakeout
 
+*Intelligent QA Realtime Automation Platform*
+
 **Put the real thing through real conditions.**
 Agent-driven QA against a live staging environment — real browser, real data, real integrations. No mocks.
 
@@ -162,6 +164,23 @@ Not built yet:
 
 Conventional Commits (`feat:`, `fix:`, `docs:`). `npm test` and `npm run typecheck` must pass.
 
+Because Shakeout is dual-licensed (see below), contributors are asked to sign a Contributor
+License Agreement before a first pull request is merged. Without it, that contribution cannot
+be included in the commercially licensed build.
+
 ## License
 
-MIT
+Shakeout is licensed under the **GNU Affero General Public License v3.0** — see [LICENSE](LICENSE).
+
+That choice is deliberate. You may use, modify, self-host and run Shakeout freely, including
+inside a commercial company, and nothing is owed for doing so. What AGPL section 13 adds over
+the GPL is the network clause: if you run a **modified** version of Shakeout as a service that
+other people interact with over a network, you must offer those users the complete
+corresponding source of your modified version.
+
+### Commercial licensing
+
+If you want to build a proprietary product or a hosted service on top of Shakeout without the
+AGPL's source-disclosure obligation, a separate commercial license is available.
+
+Contact **otniel@kreasistudio.co.id**.

@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Put the real thing through real conditions. Agent-driven QA against a live staging environment — real browser, real data, real integrations. No mocks.",
   "type": "module",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "bin": { "shakeout": "./dist/cli.js" },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
