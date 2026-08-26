@@ -1,14 +1,31 @@
 {
   "name": "shakeout",
   "version": "0.0.1",
-  "description": "Put the real thing through real conditions. Agent-driven QA against a live staging environment — real browser, real data, real integrations. No mocks.",
+  "description": "Put the real thing through real conditions. Agent-driven QA against a live staging environment \u2014 real browser, real data, real integrations. No mocks.",
   "type": "module",
   "license": "AGPL-3.0-only",
-  "bin": { "shakeout": "./dist/cli.js" },
+  "author": "Otniel <otniel@kreasistudio.co.id>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otnieldocs/shakeout.git"
+  },
+  "bugs": {
+    "url": "https://github.com/otnieldocs/shakeout/issues"
+  },
+  "homepage": "https://github.com/otnieldocs/shakeout#readme",
+  "bin": {
+    "shakeout": "./dist/cli.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "README.md", "LICENSE"],
-  "engines": { "node": ">=20" },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx src/cli.ts",
@@ -16,7 +33,15 @@
     "test": "tsx tests/contracts.test.ts",
     "shakeout": "tsx src/cli.ts"
   },
-  "keywords": ["qa", "testing", "e2e", "staging", "playwright", "agent", "no-mocks"],
+  "keywords": [
+    "qa",
+    "testing",
+    "e2e",
+    "staging",
+    "playwright",
+    "agent",
+    "no-mocks"
+  ],
   "dependencies": {
     "playwright": "1.62.1"
   },
