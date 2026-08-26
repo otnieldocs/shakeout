@@ -1,5 +1,8 @@
 # Shakeout
 
+[![CI](https://github.com/otnieldocs/shakeout/actions/workflows/ci.yml/badge.svg)](https://github.com/otnieldocs/shakeout/actions/workflows/ci.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+
 *Intelligent QA Realtime Automation Platform*
 
 **Put the real thing through real conditions.**

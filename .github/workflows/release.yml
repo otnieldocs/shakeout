@@ -1,0 +1,56 @@
+name: Release
+
+# Publishes to npm when a version tag is pushed:
+#   npm version minor && git push --follow-tags
+#
+# INERT until an NPM_TOKEN secret exists on the repository (Settings →
+# Secrets and variables → Actions). Until then the job fails at the publish
+# step rather than silently doing nothing — a release that quietly no-ops is
+# worse than one that stops and says why.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  # Required for npm provenance, which cryptographically links the published
+  # package to this workflow run and commit.
+  id-token: write
+
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+jobs:
+  publish:
+    name: publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
+
+      # Never publish something that does not pass its own gates.
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Tag matches package.json version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./package.json').version")
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::Tag v$tag does not match package.json version $pkg."
+            exit 1
+          fi
+          echo "OK — publishing $pkg"
+
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

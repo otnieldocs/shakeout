@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege by default. Jobs that need more ask for it explicitly.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The test suite is pure logic — it never opens a browser — so downloading
+  # ~150MB of Chromium on every job would buy nothing but latency.
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 and 24 are the active LTS lines. 20 is EOL as of April 2026 but is
+        # still what package.json `engines` permits — drop it here and raise the
+        # engines floor in the same change, never separately.
+        node: ['20', '22', '24']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Contract tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  invariants:
+    name: module invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+
+      # Every module in modules/ must survive loader validation — meaning it
+      # declares sideEffects and exports a teardown(). A module that creates
+      # real artifacts without destroying them degrades the shared staging
+      # environment for every other module, cumulatively and silently, so this
+      # is a merge blocker rather than a lint warning.
+      - name: Every module passes loader validation
+        run: |
+          output=$(npx tsx src/cli.ts list)
+          echo "$output"
+          if echo "$output" | grep -q "INVALID"; then
+            echo "::error::One or more modules failed loader validation (see above)."
+            exit 1
+          fi
+
+  hygiene:
+    name: repo hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # reporting/ and .vault/ are a SECURITY boundary, not noise reduction. A
+      # run folder holds an authenticated session's traffic; a vault file is
+      # bearer-equivalent. If either is ever tracked, that is a credential leak
+      # in the git history — which survives deleting the file later.
+      - name: No run artifacts or secrets are tracked
+        run: |
+          bad=$(git ls-files | grep -E '^(reporting/|\.vault/|dist/|node_modules/)' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Run artifacts or build output are tracked:"
+            echo "$bad"
+            exit 1
+          fi
+
+          envs=$(git ls-files | grep -E '(^|/)\.env' | grep -v '\.example$' || true)
+          if [ -n "$envs" ]; then
+            echo "::error::Environment files are tracked:"
+            echo "$envs"
+            exit 1
+          fi
+
+          echo "OK — nothing sensitive is tracked."
+
+      - name: .gitignore still covers the security boundary
+        run: |
+          for entry in 'reporting/' '.vault/'; do
+            if ! grep -qxF "$entry" .gitignore; then
+              echo "::error::.gitignore no longer contains '$entry'. This line is load-bearing."
+              exit 1
+            fi
+          done
+          echo "OK — gitignore intact."
+
+  audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+
+      # A tool that handles credentials should know about its own CVEs. Blocking
+      # at `high` rather than `moderate` keeps this actionable instead of noisy.
+      - name: npm audit
+        run: npm audit --audit-level=high
