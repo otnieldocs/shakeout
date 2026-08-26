@@ -26,10 +26,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 22 and 24 are the active LTS lines. 20 is EOL as of April 2026 but is
-        # still what package.json `engines` permits — drop it here and raise the
-        # engines floor in the same change, never separately.
-        node: ['20', '22', '24']
+        # The active LTS lines. Node 20 reached end-of-life in April 2026 and
+        # was dropped here together with the `engines` floor in package.json —
+        # those two must always move as one change. An engines floor with no CI
+        # job testing it is a claim nothing verifies, and a CI job below the
+        # floor tests a configuration the package says it does not support.
+        node: ['22', '24']
     steps:
       - uses: actions/checkout@v7
 
