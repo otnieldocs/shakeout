@@ -165,11 +165,16 @@ Not built yet:
 
 ## Contributing
 
-Conventional Commits (`feat:`, `fix:`, `docs:`). `npm test` and `npm run typecheck` must pass.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the CI gates, and the module invariants
+that will not be relaxed.
 
-Because Shakeout is dual-licensed (see below), contributors are asked to sign a Contributor
-License Agreement before a first pull request is merged. Without it, that contribution cannot
-be included in the commercially licensed build.
+Because Shakeout is dual-licensed (see below), contributors sign a one-time Contributor
+License Agreement — [CLA.md](CLA.md) — before a first pull request is merged. Without it,
+that contribution cannot be included in the commercially licensed build. The CLA is explicit
+about what you are agreeing to, including that your work may ship in a paid version.
+
+Security issues: please email **otniel@kreasistudio.co.id** rather than opening a public
+issue.
 
 ## License
 
