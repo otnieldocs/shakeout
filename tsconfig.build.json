@@ -1,0 +1,12 @@
+{
+  // Build config: emits ONLY src/ to dist/. The base tsconfig type-checks the
+  // whole repo (tests and example modules included) but emits nothing, so the
+  // published package never carries test or example output.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src/**/*.ts"]
+}

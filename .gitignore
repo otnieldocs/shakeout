@@ -1,0 +1,33 @@
+# ---------------------------------------------------------------------------
+# Run artifacts. THIS IS A SECURITY BOUNDARY, not just noise reduction.
+#
+# A run folder contains a HAR of an authenticated session: Authorization
+# headers, Cookie/Set-Cookie, request bodies, plus screenshots of a logged-in
+# application. The observer redacts known secret headers on capture (see
+# src/observer/redact.ts), but redaction is a best-effort net over an unbounded
+# space of app-specific tokens — it is not a licence to commit these.
+#
+# Never remove these two lines. Never `git add -f` a run folder.
+# ---------------------------------------------------------------------------
+reporting/
+.vault/
+
+# Local target config — contains staging URLs and, depending on how you wire
+# it, credential references. The .example file is the tracked template.
+shakeout.config.ts
+!shakeout.config.example.ts
+.env
+.env.*
+!.env.example
+
+# Build output / deps
+node_modules/
+dist/
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
