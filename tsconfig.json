@@ -14,6 +14,11 @@
     "declaration": true,
     "sourceMap": true,
     "skipLibCheck": true,
+    // Explicit rather than relying on ambient auto-inclusion of @types/*.
+    // TypeScript 7 does not resolve @types/node implicitly under this
+    // moduleResolution, and fails with "Cannot find name 'node:fs'". Naming it
+    // here works identically on 5.x and 7.x, so the repo builds on both.
+    "types": ["node"],
     "esModuleInterop": true,
     "verbatimModuleSyntax": true
   },
