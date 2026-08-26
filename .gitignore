@@ -7,10 +7,15 @@
 # src/observer/redact.ts), but redaction is a best-effort net over an unbounded
 # space of app-specific tokens — it is not a licence to commit these.
 #
+# The LEADING SLASH is load-bearing. Without it, `reporting/` matches a
+# directory called `reporting` at ANY depth — which silently swallowed
+# `src/reporting/` and shipped a repo that could not build. Anchor these to the
+# repo root; never write them bare.
+#
 # Never remove these two lines. Never `git add -f` a run folder.
 # ---------------------------------------------------------------------------
-reporting/
-.vault/
+/reporting/
+/.vault/
 
 # Local target config — contains staging URLs and, depending on how you wire
 # it, credential references. The .example file is the tracked template.
@@ -22,7 +27,7 @@ shakeout.config.ts
 
 # Build output / deps
 node_modules/
-dist/
+/dist/
 *.tsbuildinfo
 
 # OS / editor

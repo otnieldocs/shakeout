@@ -104,13 +104,25 @@ jobs:
 
       - name: .gitignore still covers the security boundary
         run: |
-          for entry in 'reporting/' '.vault/'; do
+          for entry in '/reporting/' '/.vault/'; do
             if ! grep -qxF "$entry" .gitignore; then
               echo "::error::.gitignore no longer contains '$entry'. This line is load-bearing."
               exit 1
             fi
           done
-          echo "OK — gitignore intact."
+
+          # An unanchored directory pattern matches at ANY depth. A bare
+          # `reporting/` silently swallowed src/reporting/ and shipped a repo
+          # that could not build — the files existed locally, so every local
+          # check passed and only CI saw the truth. Anchoring is the fix, and
+          # this is the guard that keeps it fixed.
+          for entry in 'reporting/' '.vault/' 'dist/'; do
+            if grep -qxF "$entry" .gitignore; then
+              echo "::error::.gitignore has unanchored '$entry' — write '/$entry' so it only matches the repo root."
+              exit 1
+            fi
+          done
+          echo "OK — gitignore intact and anchored."
 
   audit:
     name: dependency audit
