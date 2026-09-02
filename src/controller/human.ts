@@ -54,7 +54,9 @@ export async function requestHuman(
     throw new BlockedError(
       `This module needs a human step ("${instruction}") but the run is headless.\n` +
         `Complete it once in a headed run — \`shakeout auth <session> --headed\` — ` +
-        `and the saved session will carry subsequent headless runs.`,
+        `and the saved session will carry subsequent headless runs.\n` +
+        `On a host with no display, attach to a browser you can see instead:\n` +
+        `  shakeout auth <session> --browser-ws-endpoint ws://…`,
       'human',
     );
   }

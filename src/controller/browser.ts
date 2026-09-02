@@ -14,6 +14,19 @@ export interface LaunchOptions {
   storageStatePath?: string;
   viewport?: { width: number; height: number };
   slowMoMs?: number;
+  /**
+   * Attach to a browser Shakeout did NOT start, over the Chrome DevTools
+   * Protocol — `ws://host:port/devtools/browser/<id>`.
+   *
+   * This is what makes a human handoff possible on a headless host. Shakeout
+   * deliberately does not provision remote desktops: how the browser becomes
+   * visible (VNC, a hosted Chrome, a tunnel to your laptop) is an infrastructure
+   * decision, and bundling one would hand every adopter a remote-access surface
+   * they did not ask for. Exposing the browser is your problem; driving it is ours.
+   *
+   * Implies headed: a browser someone can watch is the only reason to connect.
+   */
+  browserWsEndpoint?: string;
 }
 
 export interface BrowserSession {
@@ -26,10 +39,19 @@ export interface BrowserSession {
 }
 
 export async function launch(target: Target, opts: LaunchOptions): Promise<BrowserSession> {
-  const browser = await chromium.launch({
-    headless: !opts.headed,
-    slowMo: opts.slowMoMs,
-  });
+  /*
+   * OWNERSHIP: close what you opened, and nothing else.
+   *
+   * A connected browser outlives the run — it is somebody's long-running
+   * session, quite possibly the one they just signed into by hand. Calling
+   * browser.close() on it would tear that down and make the vaulted session
+   * a one-shot, which defeats the point of connecting at all.
+   */
+  const weOwnTheBrowser = opts.browserWsEndpoint === undefined;
+
+  const browser = weOwnTheBrowser
+    ? await chromium.launch({ headless: !opts.headed, slowMo: opts.slowMoMs })
+    : await chromium.connectOverCDP(opts.browserWsEndpoint as string);
 
   const context = await browser.newContext({
     viewport: opts.viewport ?? { width: 1440, height: 900 },
@@ -73,8 +95,13 @@ export async function launch(target: Target, opts: LaunchOptions): Promise<Brows
     page,
     allowlistViolations,
     close: async () => {
+      // Always drop our own context — it carries the route handler and cookies.
       await context.close().catch(() => undefined);
-      await browser.close().catch(() => undefined);
+      // Only close a browser we started. See the ownership note in launch().
+      // A connected browser is deliberately left running — it is not ours, and
+      // it is very likely the session a human just authenticated in. Playwright
+      // drops the CDP connection when this process exits.
+      if (weOwnTheBrowser) await browser.close().catch(() => undefined);
     },
   };
 }
