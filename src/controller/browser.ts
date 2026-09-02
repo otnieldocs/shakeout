@@ -53,10 +53,35 @@ export async function launch(target: Target, opts: LaunchOptions): Promise<Brows
     ? await chromium.launch({ headless: !opts.headed, slowMo: opts.slowMoMs })
     : await chromium.connectOverCDP(opts.browserWsEndpoint as string);
 
-  const context = await browser.newContext({
-    viewport: opts.viewport ?? { width: 1440, height: 900 },
-    storageState: opts.storageStatePath,
-  });
+  /*
+   * ⚠️ When attached, REUSE the browser's existing context — do not create one.
+   *
+   * The human signs in to the window they can actually see, which lives in the
+   * browser's default context. A fresh newContext() is isolated from it, so
+   * storageState() returns ZERO cookies and the vault records a session that
+   * authenticates nobody — while `shakeout auth` prints "Saved session".
+   *
+   * Measured, not assumed: after a login in the default context,
+   * context.storageState() there had 1 cookie and a sibling newContext() had 0.
+   */
+  const attachedContext = weOwnTheBrowser ? undefined : browser.contexts()[0];
+  const weOwnTheContext = attachedContext === undefined;
+
+  if (attachedContext !== undefined && opts.storageStatePath !== undefined) {
+    // A vaulted session cannot be injected into a context that already exists.
+    // Say so rather than silently ignoring it and running as the wrong user.
+    console.warn(
+      '[shakeout] attached to a running browser, so the vaulted session was NOT ' +
+        'applied — the browser\'s own session is used instead.',
+    );
+  }
+
+  const context =
+    attachedContext ??
+    (await browser.newContext({
+      viewport: opts.viewport ?? { width: 1440, height: 900 },
+      storageState: opts.storageStatePath,
+    }));
 
   const allowlistViolations: string[] = [];
 
@@ -87,7 +112,8 @@ export async function launch(target: Target, opts: LaunchOptions): Promise<Brows
     }
   });
 
-  const page = await context.newPage();
+  // Reuse the tab the human is looking at, so they can watch what happens.
+  const page = attachedContext ? (attachedContext.pages()[0] ?? (await context.newPage())) : await context.newPage();
 
   return {
     browser,
@@ -95,8 +121,10 @@ export async function launch(target: Target, opts: LaunchOptions): Promise<Brows
     page,
     allowlistViolations,
     close: async () => {
-      // Always drop our own context — it carries the route handler and cookies.
-      await context.close().catch(() => undefined);
+      // Same ownership rule as the browser: close only what we created. An
+      // attached context belongs to the running browser, and closing it would
+      // destroy the session the human just established.
+      if (weOwnTheContext) await context.close().catch(() => undefined);
       // Only close a browser we started. See the ownership note in launch().
       // A connected browser is deliberately left running — it is not ours, and
       // it is very likely the session a human just authenticated in. Playwright
