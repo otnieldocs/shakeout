@@ -23,6 +23,8 @@ export interface RunOptions {
   reportingDir: string;
   vaultDir: string;
   headed: boolean;
+  /** Attach to an already-running browser over CDP instead of launching one. */
+  browserWsEndpoint?: string;
   /** Extra app-specific secret keys for the redactor. */
   extraSecretKeys?: string[];
   ignoreConsole?: (string | RegExp)[];
@@ -64,6 +66,7 @@ export async function runModule(mod: ShakeoutModule, opts: RunOptions): Promise<
   const session = await launch(opts.target, {
     headed: opts.headed,
     storageStatePath,
+    browserWsEndpoint: opts.browserWsEndpoint,
   });
   observer.attach(session.page);
 
@@ -76,7 +79,10 @@ export async function runModule(mod: ShakeoutModule, opts: RunOptions): Promise<
     shot: (name) => observer.shot(session.page, name),
     human: async (instruction, humanOpts) => {
       await requestHuman(session.page, instruction, {
-        headed: opts.headed,
+        // Connecting to a browser someone else is running IS a headed run —
+        // that is the only reason to connect. Without this the handoff would
+        // still raise BlockedError on a host with no display of its own.
+        headed: opts.headed || opts.browserWsEndpoint !== undefined,
         timeoutMs: humanOpts?.timeoutMs,
       });
       // Persist whatever the human just unlocked, so the next run skips it.

@@ -63,6 +63,10 @@ shakeout — real browser, real data, real integrations. No mocks.
 Options
   --target <name>        Target from your config (default: config.defaultTarget)
   --headed               Show the browser. Required for any human handoff.
+  --browser-ws-endpoint <ws://…>
+                         Attach to a browser you are already running (CDP)
+                         instead of launching one. Makes a human handoff
+                         possible on a host with no display. Implies --headed.
   --modules-dir <path>   Where modules live (default: ./modules)
   --skip-effects <list>  Comma-separated side effects to refuse, e.g. external_publish
   --capture-bodies       Record request bodies (redacted). Off by default.
@@ -83,6 +87,7 @@ async function main(): Promise<number> {
   const reportingDir = resolve(config.reportingDir ?? './reporting');
   const vaultDir = resolve(config.vaultDir ?? './.vault');
   const headed = args.flags.headed === true;
+  const browserWsEndpoint = args.flags['browser-ws-endpoint'] as string | undefined;
 
   if (args.command === 'list') {
     const ids = listModuleIds(modulesDir);
@@ -129,7 +134,7 @@ async function main(): Promise<number> {
     // shakeout auth <session> — capture via human handoff.
     const target = resolveTarget(config, args.flags.target as string | undefined);
     assertTargetUsable(target);
-    const session = await launch(target, { headed: true });
+    const session = await launch(target, { headed: true, browserWsEndpoint });
     try {
       await session.page.goto(target.baseUrl, { waitUntil: 'domcontentloaded' });
       await requestHuman(session.page, `Log in as "${sub}" on ${target.baseUrl}`, { headed: true });
@@ -172,6 +177,7 @@ async function main(): Promise<number> {
     reportingDir,
     vaultDir,
     headed,
+    browserWsEndpoint,
     captureBodies: args.flags['capture-bodies'] === true,
   });
 
