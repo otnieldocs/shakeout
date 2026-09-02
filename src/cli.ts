@@ -17,6 +17,9 @@ import type { RunResult, SideEffect } from './core/types.js';
 import { writeJUnit } from './reporting/junit.js';
 import { loadConfig, resolveTarget } from './targets/config.js';
 import { assertTargetUsable } from './targets/allowlist.js';
+import { logout as providerLogout, status as credentialStatus } from './providers/credentials.js';
+import { loadSelection, runOnboarding } from './tui/onboarding.js';
+import type { ProviderId } from './providers/types.js';
 import { SessionVault } from './vault/sessions.js';
 
 interface Args {
@@ -53,6 +56,9 @@ function usage(): void {
   console.log(`
 shakeout — real browser, real data, real integrations. No mocks.
 
+  shakeout                        Interactive session (picks a model on first run)
+  shakeout model                  Choose a provider and model
+  shakeout logout [provider]      Forget a stored API key
   shakeout <module> [options]     Run one module
   shakeout list                   List discovered modules
   shakeout auth <session>         Capture a session (opens headed, waits for you)
@@ -77,8 +83,38 @@ Options
 async function main(): Promise<number> {
   const args = parseArgs(process.argv.slice(2));
 
-  if (args.command === 'help' || args.flags.help === true) {
+  if (args.flags.help === true) {
     usage();
+    return 0;
+  }
+
+  /*
+   * These run before loadConfig(). Choosing a model is the very first thing a
+   * new user does, and it must not require a shakeout.config.ts that they have
+   * had no reason to create yet.
+   */
+  if (args.command === 'model') {
+    await runOnboarding();
+    return 0;
+  }
+
+  if (args.command === 'logout') {
+    const which = args.positional[0] as ProviderId | undefined;
+    providerLogout(which);
+    console.log(which ? `Forgot the ${which} API key.` : 'Forgot all stored API keys.');
+    return 0;
+  }
+
+  if (args.command === 'help') {
+    // Bare `shakeout` — onboard if needed, then report what is configured.
+    const existing = (await loadSelection()) ?? (await runOnboarding());
+    const configured = credentialStatus()
+      .map((s) => `${s.provider} (${s.source})`)
+      .join(', ');
+    console.log(`  Model:       ${existing.model.label} (${existing.provider})`);
+    console.log(`  Credentials: ${configured || 'none stored'}`);
+    console.log('\n  The interactive agent session lands in the next release.');
+    console.log('  Until then: `shakeout list` to see modules, `shakeout <module>` to run one.\n');
     return 0;
   }
 
