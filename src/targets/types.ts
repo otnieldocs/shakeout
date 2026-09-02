@@ -20,6 +20,27 @@ export interface Target {
   production?: boolean;
   /** Sandbox/staging identifiers, surfaced in the report for provenance. */
   integrations?: Record<string, string>;
+  /**
+   * Console messages matching any of these are ignored by the
+   * `no-console-errors` oracle. For third parties that log noisily on every
+   * page — analytics SDKs, chat widgets, consent banners.
+   */
+  ignoreConsole?: (string | RegExp)[];
+  /**
+   * Request URLs matching any of these are ignored by the
+   * `no-failed-app-requests` oracle.
+   *
+   * ⚠️ For requests the FRAMEWORK cancels routinely, not for failures you would
+   * rather not see. Next.js App Router speculative prefetches (`/^.*\?_rsc=/`)
+   * are the canonical case: the browser aborts in-flight prefetches on every
+   * navigation, so without this every module on a Next.js app reports a failed
+   * request nothing was waiting on.
+   *
+   * ⚠️ Never match on the failure reason. `net::ERR_ABORTED` is also how a
+   * genuinely cancelled fetch appears, which is precisely what this oracle is
+   * for. Match a URL shape that is unambiguously speculative.
+   */
+  ignoreNetwork?: (string | RegExp)[];
 }
 
 export interface ShakeoutConfig {

@@ -30,6 +30,19 @@ const config: ShakeoutConfig = {
         'https://www.tiktok.com',
       ],
 
+      /*
+       * Noise filters for the two global oracles that read streams rather than
+       * state. Both are optional and both default to filtering nothing.
+       *
+       * ⚠️ `ignoreNetwork` matches request URLs, never failure reasons. The
+       * example below is Next.js's speculative RSC prefetch, which the browser
+       * aborts on every navigation — a request nothing awaited. Matching
+       * `net::ERR_ABORTED` instead would also hide a genuinely cancelled fetch,
+       * which is the exact failure `no-failed-app-requests` exists to catch.
+       */
+      // ignoreConsole: ['Download the React DevTools'],
+      // ignoreNetwork: [/\?_rsc=/],
+
       /* Recorded in every report, so a result is traceable to what it ran against. */
       integrations: {
         midtrans: 'sandbox',

@@ -28,6 +28,8 @@ export interface RunOptions {
   /** Extra app-specific secret keys for the redactor. */
   extraSecretKeys?: string[];
   ignoreConsole?: (string | RegExp)[];
+  /** See OracleOptions.ignoreNetwork. Overrides the target's own list. */
+  ignoreNetwork?: (string | RegExp)[];
   captureBodies?: boolean;
 }
 
@@ -117,7 +119,10 @@ export async function runModule(mod: ShakeoutModule, opts: RunOptions): Promise<
   oracles.push(
     ...runGlobalOracles(observer.evidence, {
       appOrigins: opts.target.allowedOrigins.map((o) => new URL(o).origin),
-      ignoreConsole: opts.ignoreConsole,
+      // Target config is the source of truth; an explicit RunOptions value
+      // still wins so a caller can override per run.
+      ignoreConsole: opts.ignoreConsole ?? opts.target.ignoreConsole,
+      ignoreNetwork: opts.ignoreNetwork ?? opts.target.ignoreNetwork,
     }),
   );
 

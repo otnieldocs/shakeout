@@ -14,6 +14,23 @@ export interface OracleOptions {
   appOrigins: string[];
   /** Console messages matching any of these are ignored (noisy third parties). */
   ignoreConsole?: (string | RegExp)[];
+  /**
+   * Request URLs matching any of these are ignored by `no-failed-app-requests`.
+   *
+   * ⚠️ Use this for requests the FRAMEWORK cancels as a matter of course, not
+   * for failures you would rather not see. The motivating case is Next.js App
+   * Router speculative prefetches (`?_rsc=`): the browser aborts in-flight
+   * prefetches whenever the user navigates away, so every run of every module
+   * on a Next.js app reports `net::ERR_ABORTED` for a request nothing was
+   * waiting on. That is normal browser behaviour, and reporting it as a defect
+   * is how a suite loses the credibility it needs to be acted on.
+   *
+   * ⚠️ Do NOT use it to ignore `net::ERR_ABORTED` in general. Aborting is also
+   * how a genuine cancelled fetch appears — the exact "the UI showed 0 because
+   * the request died" case this oracle exists to catch. Match on a URL shape
+   * that is unambiguously speculative, never on the failure reason.
+   */
+  ignoreNetwork?: (string | RegExp)[];
 }
 
 function matchesAny(text: string, patterns: (string | RegExp)[] = []): boolean {
@@ -84,7 +101,10 @@ export function runGlobalOracles(evidence: Evidence, opts: OracleOptions): Oracl
   // 4. Requests to the app that never completed. This is the one that catches
   //    "the UI showed 0 users" when the request actually died.
   const appFailed = evidence.network.filter(
-    (e) => isAppRequest(e, opts.appOrigins) && e.failure !== undefined,
+    (e) =>
+      isAppRequest(e, opts.appOrigins) &&
+      e.failure !== undefined &&
+      !matchesAny(e.url, opts.ignoreNetwork),
   );
   results.push({
     name: 'no-failed-app-requests',

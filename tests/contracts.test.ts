@@ -13,6 +13,7 @@
 import { assertTargetUsable, assertOriginAllowed } from '../src/targets/allowlist.js';
 import { redactHeaders, redactUrl, redactBody, REDACTED } from '../src/observer/redact.js';
 import { validate } from '../src/core/loader.js';
+import { runGlobalOracles } from '../src/observer/oracles.js';
 import type { Target } from '../src/targets/types.js';
 
 let pass = 0, fail = 0;
@@ -130,6 +131,49 @@ try {
   await ollama.turn({ system: '', messages: [], tools: [] });
 } catch (e) { notImpl = (e as Error).name === 'NotImplementedError'; }
 check('unimplemented turn() fails loudly', notImpl);
+
+console.log('\n[oracle noise filters]');
+// A request the FRAMEWORK cancelled (Next.js speculative RSC prefetch) next to
+// a genuinely dead one. The oracle must be able to tell them apart — ignoring
+// both would defeat the "UI showed 0 because the request died" case it exists
+// for, and ignoring neither makes every run on a Next.js app cry wolf.
+const APP = 'https://staging.example.com';
+const netEvidence = {
+  console: [{ type: 'error', text: 'Download the React DevTools' }],
+  pageErrors: [],
+  network: [
+    { url: `${APP}/pricing?_rsc=1p-R`, failure: 'net::ERR_ABORTED' },
+    { url: `${APP}/api/public/pricing`, failure: 'net::ERR_CONNECTION_REFUSED' },
+  ],
+} as never;
+
+const byName = (rs: { name: string; passed: boolean; detail?: string }[], n: string) =>
+  rs.find((r) => r.name === n)!;
+
+const unfiltered = runGlobalOracles(netEvidence, { appOrigins: [APP] });
+check('without a filter, both failed requests are reported',
+  byName(unfiltered, 'no-failed-app-requests').passed === false);
+check('without a filter, the noisy console error is reported',
+  byName(unfiltered, 'no-console-errors').passed === false);
+
+const filtered = runGlobalOracles(netEvidence, {
+  appOrigins: [APP],
+  ignoreNetwork: [/\?_rsc=/],
+  ignoreConsole: ['React DevTools'],
+});
+check('ignoreNetwork silences the prefetch abort but NOT the dead request',
+  byName(filtered, 'no-failed-app-requests').passed === false
+  && byName(filtered, 'no-failed-app-requests').detail!.includes('CONNECTION_REFUSED'),
+  byName(filtered, 'no-failed-app-requests').detail);
+check('ignoreConsole silences the third-party console error',
+  byName(filtered, 'no-console-errors').passed === true);
+
+const onlyPrefetch = runGlobalOracles(
+  { console: [], pageErrors: [], network: [{ url: `${APP}/x?_rsc=1`, failure: 'net::ERR_ABORTED' }] } as never,
+  { appOrigins: [APP], ignoreNetwork: [/\?_rsc=/] },
+);
+check('a run whose only failure is a prefetch abort passes',
+  byName(onlyPrefetch, 'no-failed-app-requests').passed === true);
 
 rmSync(tmp, { recursive: true, force: true });
 
