@@ -55,11 +55,33 @@ cp shakeout.config.example.ts shakeout.config.ts   # then edit it
 ## Use
 
 ```bash
+shakeout                            # interactive — picks a model on first run
+shakeout model                      # change provider / model
 shakeout list                       # discovered modules
 shakeout auth qa_user --headed      # one-time human handoff, saved to the vault
 shakeout example_login              # run a module
 shakeout report example_login       # path to the latest run folder
 ```
+
+### Bring your own model
+
+Shakeout never proxies your traffic — you pick a provider, supply your own key,
+and pay your own provider. On first run it asks:
+
+```
+  Choose a provider        Anthropic · OpenAI · Google · Ollama (local)
+  API key                  verified with a real call before it is saved
+  Choose a model           fetched live from your provider, never hardcoded
+```
+
+Keys live in `~/.shakeout/credentials.json` (`0600`, directory `0700`), or come
+from `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` — the environment
+always wins over the stored file. `shakeout logout` forgets them.
+
+Model lists are fetched from the provider rather than baked in, because a
+hardcoded line-up starts offering retired ids within months. Models that cannot
+call tools are never offered: the agent *is* tool calls, so such a model does
+not run slowly, it does not run at all.
 
 ## Architecture
 
@@ -150,17 +172,28 @@ clone — it is both safer and more deterministic.
 
 Early. Working today: module loading and validation, the runner and outcome model, browser
 control, human handoff, the observer and global oracles, the session vault, run folders with
-retention, and JUnit output.
+retention, JUnit output, and the provider layer — provider/model selection, credential storage
+and verification.
+
+| Provider | Connect & list models | Drive the agent |
+|---|---|---|
+| Anthropic | yes | yes |
+| OpenAI | yes | not yet |
+| Google | yes | not yet |
+| Ollama | yes | not yet |
+
+Only Anthropic implements a model turn so far. The other three connect, verify a credential and
+list their models, and raise a clear `NotImplementedError` if asked to drive the agent — the
+turn implementations land alongside the agent loop, where the tool-calling differences between
+providers can be worked out against one loop rather than three.
+
+Only one provider SDK is a dependency: OpenAI, Google and Ollama are reached over plain `fetch`,
+so a tool that handles credentials keeps a dependency surface small enough to audit by reading.
 
 Not built yet:
 
-- **`state/`** — database snapshot/restore. The intended answer to repeatability: social OAuth
-  tokens live in the application's database, not in a cookie, so a golden snapshot restored per
-  run is what lets `tiktok_publish` run unattended after a single human connect.
-- **The agent layer** — natural language → an emitted module. The design rule is that the AI is
-  a *compiler*, not an interpreter: it writes modules that are committed and reviewed like code,
-  never decisions taken live at runtime. That boundary is a security control as much as a
-  quality one.
+- **The agent loop** — a prompt and a URL in, a browser session driven by the model out. This is
+  the product, and the provider layer above is its prerequisite.
 - **Differential oracles** — comparing a run against the previous `result.json`.
 
 ## Contributing

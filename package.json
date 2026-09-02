@@ -43,6 +43,8 @@
     "no-mocks"
   ],
   "dependencies": {
+    "@anthropic-ai/sdk": "0.121.0",
+    "@inquirer/prompts": "8.7.0",
     "playwright": "1.62.1"
   },
   "devDependencies": {

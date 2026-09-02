@@ -64,5 +64,74 @@ check('module without sideEffects REJECTED', throws(() => validate('m',
   { manifest: { id: 'm', title: 'T' }, flow: async () => {}, teardown: async () => {} })));
 check('folder/manifest id mismatch REJECTED', throws(() => validate('other', { ...base, teardown: async () => {} })));
 
+
+// ---------------------------------------------------------------------------
+// Provider layer
+// ---------------------------------------------------------------------------
+import { mkdtempSync, rmSync, statSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const tmp = mkdtempSync(join(tmpdir(), 'shakeout-test-'));
+process.env.SHAKEOUT_CONFIG_DIR = tmp;
+
+const creds = await import('../src/providers/credentials.js');
+const { selectableModels, providerInfo } = await import('../src/providers/registry.js');
+const { createProvider, probeModel } = await import('../src/providers/index.js');
+
+console.log('\n[credentials]');
+delete process.env.ANTHROPIC_API_KEY;
+check('no key before anything is stored', creds.resolveKey('anthropic') === undefined);
+
+creds.setKey('anthropic', 'sk-ant-stored');
+check('stored key resolves', creds.resolveKey('anthropic') === 'sk-ant-stored');
+check('reports stored, not env', creds.keyIsFromEnv('anthropic') === false);
+
+// Environment must win: a key exported for this shell should never be
+// shadowed by a stale saved one.
+process.env.ANTHROPIC_API_KEY = 'sk-ant-from-env';
+check('env key OVERRIDES stored key', creds.resolveKey('anthropic') === 'sk-ant-from-env');
+check('reports env source', creds.keyIsFromEnv('anthropic') === true);
+delete process.env.ANTHROPIC_API_KEY;
+
+const credFile = join(tmp, 'credentials.json');
+check('credentials file exists', existsSync(credFile));
+const mode = statSync(credFile).mode & 0o777;
+check('credentials file is 0600', mode === 0o600, `got ${mode.toString(8)}`);
+const dirMode = statSync(tmp).mode & 0o777;
+check('config dir is 0700', dirMode === 0o700, `got ${dirMode.toString(8)}`);
+
+creds.setSelection('anthropic', 'claude-opus-5');
+check('selection round-trips', creds.getSelection()?.model === 'claude-opus-5');
+
+creds.logout('anthropic');
+check('logout clears the key', creds.resolveKey('anthropic') === undefined);
+check('logout clears its selection', creds.getSelection() === undefined);
+
+console.log('\n[registry]');
+check('models that cannot call tools are never offered', selectableModels([
+  { id: 'a', label: 'a', provider: 'openai', toolUse: 'none' },
+  { id: 'b', label: 'b', provider: 'openai', toolUse: 'native' },
+  { id: 'c', label: 'c', provider: 'ollama', toolUse: 'limited' },
+]).map((m) => m.id).join(',') === 'b,c');
+check('unknown provider rejected', throws(() => providerInfo('nope' as never)));
+check('anthropic default model is opus 5', providerInfo('anthropic').defaultModel === 'claude-opus-5');
+check('ollama needs no key', providerInfo('ollama').needsKey === false);
+
+console.log('\n[provider factory]');
+let missingKeyThrew = false;
+try { await createProvider('openai', probeModel('openai')); } catch { missingKeyThrew = true; }
+check('openai without a key is refused', missingKeyThrew);
+
+const ollama = await createProvider('ollama', probeModel('ollama'));
+check('ollama constructs without a key', ollama.id === 'ollama');
+let notImpl = false;
+try {
+  await ollama.turn({ system: '', messages: [], tools: [] });
+} catch (e) { notImpl = (e as Error).name === 'NotImplementedError'; }
+check('unimplemented turn() fails loudly', notImpl);
+
+rmSync(tmp, { recursive: true, force: true });
+
 console.log(`\n  ${pass} passed, ${fail} failed\n`);
 process.exit(fail === 0 ? 0 : 1);
