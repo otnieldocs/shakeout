@@ -20,7 +20,15 @@ const config: ShakeoutConfig = {
        * identity provider, any hosted checkout or OAuth consent screen.
        *
        * Subresources (analytics beacons, fonts, CDN assets) are NOT blocked by
-       * this list; only top-level navigations are.
+       * this list; only DOCUMENT requests are.
+       *
+       * ⚠️ "Document" includes IFRAMES, not just top-level navigations — the
+       * enforcement in `controller/browser.ts` keys on
+       * `request.resourceType() !== 'document'`. So any third party that renders
+       * itself in an iframe needs listing here even though nobody ever navigates
+       * to it. Cloudflare Turnstile is exactly that case, and omitting it blocks
+       * the widget from loading while the module asserting its presence fails —
+       * a self-inflicted failure that reads as a product defect.
        */
       allowedOrigins: [
         'https://staging.example.com',
@@ -28,6 +36,7 @@ const config: ShakeoutConfig = {
         'https://sandbox.midtrans.com',
         'https://sandbox-buy.paddle.com',
         'https://www.tiktok.com',
+        'https://challenges.cloudflare.com',  // Turnstile — renders in an IFRAME
       ],
 
       /* Recorded in every report, so a result is traceable to what it ran against. */
