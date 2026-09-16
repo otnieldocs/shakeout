@@ -44,7 +44,7 @@
   ],
   "dependencies": {
     "@anthropic-ai/sdk": "0.122.0",
-    "@inquirer/prompts": "8.7.0",
+    "@inquirer/prompts": "8.7.2",
     "playwright": "1.62.1"
   },
   "devDependencies": {
